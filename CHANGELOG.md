@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [[1.3.0](https://github.com/rabbitmq/rabbitmq-amqp-go-client/releases/tag/v1.3.0)]
+
+## 1.3.0 - 2026-07-20
+- [Release 1.3.0](https://github.com/rabbitmq/rabbitmq-amqp-go-client/releases/tag/v1.3.0)
+
+### Added
+- feat: add `RequeueWithAnnotationsAndFailed` and `DelayRetry` to `IDeliverContext` by @Gsantomaggio in [#120](https://github.com/rabbitmq/rabbitmq-amqp-go-client/pull/120)
+
+### Changed
+- Update dependencies by @Gsantomaggio in [#119](https://github.com/rabbitmq/rabbitmq-amqp-go-client/pull/119)
+- Update Documentation by @Gsantomaggio in [#121](https://github.com/rabbitmq/rabbitmq-amqp-go-client/pull/121)
+
 ## [[1.2.0](https://github.com/rabbitmq/rabbitmq-amqp-go-client/releases/tag/v1.2.0)]
 
 ## 1.2.0 - 2026-06-15
