@@ -275,6 +275,10 @@ type QuorumQueueSpecification struct {
 	// DelayedRetryMax is the maximum delay before a message is redelivered.
 	// Requires RabbitMQ 4.3 or later. Maps to the x-delayed-retry-max queue argument (milliseconds).
 	DelayedRetryMax time.Duration
+	// ConsumerTimeout sets the x-consumer-timeout queue argument (milliseconds).
+	// This limits how long a consumer may hold a message without settling it.
+	// Requires RabbitMQ 4.3 or later.
+	ConsumerTimeout time.Duration
 	// Arguments holds additional queue arguments passed directly to the broker.
 	Arguments map[string]any
 }
@@ -361,6 +365,10 @@ func (q *QuorumQueueSpecification) buildArguments() map[string]any {
 		result["x-delayed-retry-max"] = q.DelayedRetryMax.Milliseconds()
 	}
 
+	if q.ConsumerTimeout != 0 {
+		result["x-consumer-timeout"] = q.ConsumerTimeout.Milliseconds()
+	}
+
 	result["x-queue-type"] = string(q.queueType())
 	return result
 }
@@ -369,6 +377,11 @@ func (q *QuorumQueueSpecification) validate(f *featuresAvailable) error {
 	if f != nil && (len(q.DelayedRetryType) != 0 || q.DelayedRetryMin != 0 || q.DelayedRetryMax != 0) {
 		if !f.is43rMore {
 			return fmt.Errorf("QuorumQueueSpecification delayed retry fields require RabbitMQ 4.3 or later")
+		}
+	}
+	if f != nil && q.ConsumerTimeout != 0 {
+		if !f.is43rMore {
+			return fmt.Errorf("QuorumQueueSpecification consumer timeout requires RabbitMQ 4.3 or later")
 		}
 	}
 	return nil
@@ -638,6 +651,9 @@ type JMSQueueSpecification struct {
 	InitialClusterSize int
 	// SelectorFields lists the JMS message property names used for server-side selector evaluation.
 	SelectorFields []string
+	// ConsumerTimeout sets the x-consumer-timeout queue argument (milliseconds).
+	// This limits how long a consumer may hold a message without settling it.
+	ConsumerTimeout time.Duration
 }
 
 func (j *JMSQueueSpecification) name() string {
@@ -684,6 +700,10 @@ func (j *JMSQueueSpecification) buildArguments() map[string]any {
 
 	if j.OverflowStrategy != nil {
 		result["x-overflow"] = j.OverflowStrategy.overflowStrategy()
+	}
+
+	if j.ConsumerTimeout != 0 {
+		result["x-consumer-timeout"] = j.ConsumerTimeout.Milliseconds()
 	}
 
 	result["x-queue-type"] = string(j.queueType())

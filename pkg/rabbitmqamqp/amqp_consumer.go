@@ -202,6 +202,10 @@ func (dc *DeliveryContext) DelayRetry(ctx context.Context, delay time.Duration, 
 // the broker has already settled the delivery, so the application cannot accept/reject/release it.
 var ErrPreSettledMessageDisposed = errors.New("auto-settle on, message is already disposed")
 
+// ErrDeliveryReleaseInvalidOperation is returned when Discard, Requeue, or Batch is called on
+// a TimedOutDeliveryContext. Only Accept() is valid for a broker-released timed-out delivery.
+var ErrDeliveryReleaseInvalidOperation = errors.New("only Accept is valid for a timed-out delivery context")
+
 // PreSettledDeliveryContext represents a delivery context for pre-settled messages.
 // All settlement methods return ErrPreSettledMessageDisposed since the message is already settled by the broker.
 type PreSettledDeliveryContext struct {
@@ -246,6 +250,53 @@ func (dc *PreSettledDeliveryContext) RequeueWithAnnotationsAndDeliveryFailed(_ c
 // DelayRetry always returns ErrPreSettledMessageDisposed because the message is already settled by the broker.
 func (dc *PreSettledDeliveryContext) DelayRetry(_ context.Context, _ time.Duration, _ bool) error {
 	return ErrPreSettledMessageDisposed
+}
+
+// TimedOutDeliveryContext is the IDeliveryContext provided to DeliveryReleaseFunc when the broker
+// releases a delivery because the consumer did not settle it within the configured consumer timeout.
+// Only Accept() is valid; all other settlement methods return ErrDeliveryReleaseInvalidOperation.
+// Calling Accept() sends an AMQP Accepted disposition back to the broker, unlocking the consumer.
+type TimedOutDeliveryContext struct {
+	receiver         *amqp.Receiver
+	message          *amqp.Message
+	metricsCollector MetricsCollector
+	consumeCtx       ConsumeContext
+}
+
+func (t *TimedOutDeliveryContext) Message() *amqp.Message {
+	return t.message
+}
+
+func (t *TimedOutDeliveryContext) Accept(ctx context.Context) error {
+	err := t.receiver.AcceptMessage(ctx, t.message)
+	if err == nil {
+		t.metricsCollector.ConsumeDisposition(ConsumeUnlocked, t.consumeCtx)
+	}
+	return err
+}
+
+func (t *TimedOutDeliveryContext) Discard(_ context.Context, _ *amqp.Error) error {
+	return ErrDeliveryReleaseInvalidOperation
+}
+
+func (t *TimedOutDeliveryContext) DiscardWithAnnotations(_ context.Context, _ amqp.Annotations) error {
+	return ErrDeliveryReleaseInvalidOperation
+}
+
+func (t *TimedOutDeliveryContext) Requeue(_ context.Context) error {
+	return ErrDeliveryReleaseInvalidOperation
+}
+
+func (t *TimedOutDeliveryContext) RequeueWithAnnotations(_ context.Context, _ amqp.Annotations) error {
+	return ErrDeliveryReleaseInvalidOperation
+}
+
+func (t *TimedOutDeliveryContext) RequeueWithAnnotationsAndDeliveryFailed(_ context.Context, _ amqp.Annotations, _ bool) error {
+	return ErrDeliveryReleaseInvalidOperation
+}
+
+func (t *TimedOutDeliveryContext) DelayRetry(_ context.Context, _ time.Duration, _ bool) error {
+	return ErrDeliveryReleaseInvalidOperation
 }
 
 type consumerState byte
@@ -417,6 +468,8 @@ func (c *Consumer) createReceiver(ctx context.Context) error {
 		// so, by default we use AtLeastOnce settlement mode even is not specified
 		receiverOptions = createReceiverLinkOptions(c.destinationAdd, c.options, AtLeastOnce)
 		setSingleActiveConsumerLinkStateHandler(receiverOptions, c.options, c)
+		setConsumerTimeoutProperty(receiverOptions, c.options)
+		setDeliveryReleaseHandler(receiverOptions, c.options, c)
 	}
 
 	receiver, err := c.connection.session.NewReceiver(ctx, c.destinationAdd, receiverOptions)
