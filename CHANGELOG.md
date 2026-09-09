@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [[1.4.0](https://github.com/rabbitmq/rabbitmq-amqp-go-client/releases/tag/v1.4.0)]
+
+## 1.4.0 - 2026-09-09
+- [Release 1.4.0](https://github.com/rabbitmq/rabbitmq-amqp-go-client/releases/tag/v1.4.0)
+
+### Added
+- feat(consumer): add consumer timeout support for quorum and JMS queues by @Gsantomaggio in [#110](https://github.com/rabbitmq/rabbitmq-amqp-go-client/pull/110)
+
+### Fixed
+- fix: cap reconnect backoff to prevent int64 overflow by @alkmc in [#122](https://github.com/rabbitmq/rabbitmq-amqp-go-client/pull/122)
+
 ## [[1.3.0](https://github.com/rabbitmq/rabbitmq-amqp-go-client/releases/tag/v1.3.0)]
 
 ## 1.3.0 - 2026-07-20
