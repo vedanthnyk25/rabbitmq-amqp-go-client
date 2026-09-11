@@ -46,6 +46,11 @@ func createReceiverLinkOptions(address string, options IConsumerOptions, deliver
 	prop := make(map[string]any)
 	prop["paired"] = true
 
+	priority := getPriority(options)
+	if priority != 0 {
+		prop["priority"] = priority
+	}
+
 	// Check if pre-settled mode is enabled
 	preSettled := getPreSettled(options)
 

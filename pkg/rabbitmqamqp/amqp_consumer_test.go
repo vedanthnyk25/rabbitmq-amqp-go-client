@@ -126,6 +126,34 @@ var _ = Describe("NewConsumer tests", func() {
 		Expect(connection.Close(context.Background())).To(BeNil())
 	})
 
+	It("AMQP NewConsumer should accept consumer priority", func() {
+		qName := generateNameWithDateTime("AMQP NewConsumer should accept consumer priority")
+		connection, err := Dial(context.Background(), "amqp://", nil)
+		Expect(err).To(BeNil())
+
+		ver, _ := connection.Properties()["version"].(string)
+		if !isVersionGreaterOrEqual(extractVersion(ver), "4.3.0") {
+			Skip("requires RabbitMQ 4.3+ for consumer priority")
+		}
+
+		queue, err := connection.Management().DeclareQueue(context.Background(), &QuorumQueueSpecification{
+			Name: qName,
+		})
+		Expect(err).To(BeNil())
+		Expect(queue).NotTo(BeNil())
+
+		consumer, err := connection.NewConsumer(context.Background(), qName, &ConsumerOptions{
+			Priority: 10,
+		})
+
+		Expect(err).To(BeNil())
+		Expect(consumer).NotTo(BeNil())
+
+		Expect(consumer.Close(context.Background())).To(BeNil())
+		Expect(connection.Management().DeleteQueue(context.Background(), qName)).To(BeNil())
+		Expect(connection.Close(context.Background())).To(BeNil())
+	})
+
 	It("AMQP NewConsumer should discard the message to the queue with and without annotations", func() {
 		// TODO: Implement this test with a dead letter queue to test the discard feature
 		qName := generateNameWithDateTime("AMQP NewConsumer should discard the message to the queue with and without annotations")
@@ -164,6 +192,7 @@ var _ = Describe("NewConsumer tests", func() {
 		Expect(connection.Management().DeleteQueue(context.Background(), qName)).To(BeNil())
 		Expect(connection.Close(context.Background())).To(BeNil())
 	})
+
 })
 
 var _ = Describe("Consumer pause and unpause", func() {

@@ -57,6 +57,8 @@ type IConsumerOptions interface {
 	// settlement from the client with a disposition frame not necessary.
 	// This is the "fire-and-forget" or "at-most-once" mode.
 	preSettled() bool
+
+	priority() int
 }
 
 func getInitialCredits(co IConsumerOptions) int32 {
@@ -78,6 +80,13 @@ func getPreSettled(co IConsumerOptions) bool {
 		return false
 	}
 	return co.preSettled()
+}
+
+func getPriority(co IConsumerOptions) int {
+	if co == nil {
+		return 0
+	}
+	return co.priority()
 }
 
 type managementOptions struct {
@@ -110,6 +119,10 @@ func (mo *managementOptions) isDirectReplyToEnable() bool {
 
 func (mo *managementOptions) preSettled() bool {
 	return false
+}
+
+func (mo *managementOptions) priority() int {
+	return 0
 }
 
 // ConsumerSettleStrategy configures how the consumer receives and settles messages.
@@ -157,6 +170,8 @@ type ConsumerOptions struct {
 	// OnDeliveryRelease is called when the broker releases a delivery due to consumer timeout.
 	// See DeliveryReleaseFunc for details. Requires RabbitMQ 4.3 or later.
 	OnDeliveryRelease DeliveryReleaseFunc
+
+	Priority int
 }
 
 func (aco *ConsumerOptions) linkName() string {
@@ -198,6 +213,12 @@ func (aco *ConsumerOptions) validate(available *featuresAvailable) error {
 		return fmt.Errorf("OnDeliveryRelease callback requires RabbitMQ 4.3 or later")
 	}
 
+	if aco.Priority != 0 {
+		if available != nil && !available.is43rMore {
+			return fmt.Errorf("consumer priority is not supported. You need RabbitMQ 4.3 or later")
+		}
+	}
+
 	return nil
 }
 
@@ -207,6 +228,10 @@ func (aco *ConsumerOptions) isDirectReplyToEnable() bool {
 
 func (aco *ConsumerOptions) preSettled() bool {
 	return aco.SettleStrategy == PreSettled
+}
+
+func (aco *ConsumerOptions) priority() int {
+	return aco.Priority
 }
 
 type IOffsetSpecification interface {
@@ -468,6 +493,10 @@ func (sco *StreamConsumerOptions) isDirectReplyToEnable() bool {
 // preSettled does not make sense for stream consumers.
 func (sco *StreamConsumerOptions) preSettled() bool {
 	return false
+}
+
+func (sco *StreamConsumerOptions) priority() int {
+	return 0
 }
 
 ///// PublisherOptions /////
